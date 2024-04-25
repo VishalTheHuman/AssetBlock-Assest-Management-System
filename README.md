@@ -1,1 +1,1 @@
-# `AssetBlock` : Blockchain based Assest Management System
+# `AssetBlock` : Assest Management using Blockchain
