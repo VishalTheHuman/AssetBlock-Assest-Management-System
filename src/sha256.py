@@ -1,13 +1,8 @@
-from cryptography.hazmat.backends import default_backend
-from cryptography.hazmat.primitives import serialization, hashes
-from cryptography.hazmat.primitives.asymmetric import rsa, padding
 from typing import *
-import secrets
 import hashlib
-import hmac
 import os
 
-HASH_VALUES : List[str] = [
+HASH_VALUES = [
     "0xd9596f25",
     "0xd6ce429b",
     "0xd897d13b",
@@ -18,7 +13,7 @@ HASH_VALUES : List[str] = [
     "0x440365a7",
 ]
 
-K : List[str]= [
+K = [
     "0x177f2c45", "0xaaced748", "0x9d4159ea", "0xadcbd874", 
     "0xd5b7dcbe", "0x633b1ec7", "0xd1f76f3e", "0x669c8877", 
     "0x2781a573", "0xa5cbe1a5", "0x973b978a", "0x1019f219", 
@@ -37,17 +32,17 @@ K : List[str]= [
     "0xeb532d85", "0x1d78c430", "0xcfb1e41b", "0xc8fe13f1"
 ]
 
-def generateRandomHex(length : int):
+def generateRandomHex(length):
     return "0x" + secrets.token_hex(length // 2)
 
-def stringToBits(message : str) -> List[int]:
-    charcodes : List[int] = [ord(c) for c in message]
-    bytes_array : List[str] = []
+def stringToBits(message):
+    charcodes = [ord(c) for c in message]
+    bytes_array = []
     
     for char in charcodes:
         bytes_array.append(bin(char)[2:].zfill(8))
         
-    bits : List[int] = []
+    bits = []
     for byte in bytes_array:
         for bit in byte:
             bits.append(int(bit))
@@ -87,8 +82,9 @@ def initializer(values : List[str]) -> List[List[int]]:
         words.append(fillZeros(word, 32, 'BE'))
     return words
 
-def processText(text : str) -> List[List[int]]:   
-    bits : List[int] = stringToBits(text)
+
+def processData(data):   
+    bits : List[int] = stringToBits(data)
     length : int = len(bits)
     text_len = [int(b) for b in bin(length)[2:].zfill(64)]
     if length < 448:
@@ -154,10 +150,16 @@ def add(i, j):
         c = maj(i[x], j[x], c)
     return sums
 
-def sha256(text : str) -> str: 
+def sha256(text): 
+    if len(text) > 10000:
+        print(len(text))
+        obj = hashlib.sha256()
+        obj.update(text.encode())
+        return obj.hexdigest()
+    
     k = initializer(K)
     h0, h1, h2, h3, h4, h5, h6, h7 = initializer(HASH_VALUES)
-    chunks = processText(text)
+    chunks = processData(text)
     for chunk in chunks:
         w = createChunks(chunk, 32)
         for _ in range(48):
@@ -213,132 +215,9 @@ def sign(message_hash, private_key):
     )
     return signature
 
-def verify(signature, message_hash, public_key):
-    try:
-        public_key.verify(
-            signature,
-            message_hash,
-            padding.PSS(
-                mgf=padding.MGF1(hashes.SHA256()),
-                salt_length=padding.PSS.MAX_LENGTH
-            ),
-            hashes.SHA256()
-        )
-        return True
-    except Exception as e:
-        print("Verification failed:", e)
-        return False
 
-
-def generateKeys():
-    private_key = rsa.generate_private_key(
-        public_exponent=65537,
-        key_size=2048,
-        backend=default_backend()
-    )
-    public_key = private_key.public_key()
-
-    private_key_pem = private_key.private_bytes(
-        encoding=serialization.Encoding.PEM,
-        format=serialization.PrivateFormat.PKCS8,
-        encryption_algorithm=serialization.NoEncryption()
-    )
-    
-    public_key_pem = public_key.public_bytes(
-        encoding=serialization.Encoding.PEM,
-        format=serialization.PublicFormat.SubjectPublicKeyInfo
-    )
-    
-    return private_key_pem, public_key_pem
-
-
-def loadPrivateKey(private_key_pem):
-    return serialization.load_pem_private_key(
-        private_key_pem,
-        password=None,
-        backend=default_backend()
-    )
-
-def loadPublicKey(public_key_pem):
-    return serialization.load_pem_public_key(
-        public_key_pem,
-        backend=default_backend()
-    )
 
 if __name__ == '__main__':
-    private_key_pem, public_key_pem = generateKeys()
-    private_key = loadPrivateKey(private_key_pem)
-    public_key = loadPublicKey(public_key_pem)
-
-    # Data to be signed
     data = "Your data to be signed"
-    hash_data = sha256(data).encode()
-
-    # Sign the data
-    signature = sign(hash_data, private_key)
-
-    # Simulate tampering with the signature
-    tampered_signature = bytearray(signature)
-    tampered_signature[0] ^= 1  # Flip the first bit of the signature
-
-    # Verify the tampered signature
-    is_valid = verify(tampered_signature, hash_data, public_key)
-
-    if is_valid:
-        print("Signature is valid.")
-    else:
-        print("Signature is not valid.")
-
-
-# if __name__ == '__main__':
-#     # Generate RSA key pair
-#     private_key_pem, public_key_pem = generateKeys()
-#     private_key = loadPrivateKey(private_key_pem)
-#     public_key = loadPublicKey(public_key_pem)
-
-#     # Data to be signed
-#     data = "Your data to be signed"
-#     hash_data = sha256(data).encode()
-
-#     # Sign the data
-#     signature = sign(hash_data, private_key)
-
-#     # Verify the signature
-#     is_valid = verify(signature, hash_data, public_key)
-
-#     if is_valid:
-#         print("Signature is valid.")
-#     else:
-#         print("Signature is not valid.")
-
-
-# if __name__ == '__main__':
-#     # verdict = 'y'
-#     # while verdict == 'y':
-#     #     input_message = input('Type or copy your message here: ')
-#     #     print('Your message: ', input_message)
-#     #     print('Hash: ', sha256(input_message))
-#     #     verdict = input('Do you want to tryte another text? (y/n): ').lower()  
-#     # Example usage
-#     private_key, public_key = generateKeys()
-#     print("Private Key:")
-#     print(private_key.decode())
-#     print("\nPublic Key:")
-#     print(public_key.decode())
-#     # Data to be signed
-#     data = "Your data to be signed"
-#     hash_data = sha256(data)
-
-#     # Sign the data
-#     # Sign the data
-#     signature = sign(hash_data.encode(), private_key)  # Ensure hash_data is encoded as bytes
-
-
-#     # Verify the signature
-#     is_valid = verify(signature, hash_data.encode(), public_key)  # Ensure hash_data is encoded as bytes
-
-
-#     if is_valid:
-#         print("Signature is valid.")
-#     else:
-#         print("Signature is not valid.")
+    hash_data = sha256("sample.txt").encode()
+    print(hash_data)
