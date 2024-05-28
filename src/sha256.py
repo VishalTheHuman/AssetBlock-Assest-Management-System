@@ -203,20 +203,7 @@ def sha256(text):
     for val in [h0, h1, h2, h3, h4, h5, h6, h7]:
         digest += binaryToHexadecimal(val)
     return digest
-
-def sign(message_hash, private_key):
-    signature = private_key.sign(
-        message_hash,
-        padding.PSS(
-            mgf=padding.MGF1(hashes.SHA256()),
-            salt_length=padding.PSS.MAX_LENGTH
-        ),
-        hashes.SHA256()
-    )
-    return signature
-
-
-
+CD
 if __name__ == '__main__':
     data = "Your data to be signed"
     hash_data = sha256("sample.txt").encode()
