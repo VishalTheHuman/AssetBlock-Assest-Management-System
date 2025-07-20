@@ -1,4 +1,4 @@
-# `AssetBlock` : Assest Management System using SHA-256
+# `AssetBlock` : Asset Management System using SHA-256
 
 ![Banner](assets/banner.png)
 
